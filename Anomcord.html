@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomcord - P2P Video Calls</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            color: #5865f2;
+        }
+
+        .action-selector {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .action-card {
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .action-card:hover {
+            border-color: #5865f2;
+        }
+
+        .action-card.active {
+            border-color: #5865f2;
+            background: #363636;
+        }
+
+        .action-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .main-content {
+            display: none;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .main-content.active {
+            display: flex;
+        }
+
+        .room-info {
+            flex: 1;
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .room-id-section, .join-section, .share-section {
+            background: #363636;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .room-id {
+            font-family: monospace;
+            font-size: 1.5em;
+            color: #57f287;
+            text-align: center;
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(87, 242, 135, 0.1);
+            border-radius: 4px;
+        }
+
+        .join-input {
+            width: 100%;
+            padding: 10px;
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: white;
+            font-family: monospace;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .share-link {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .share-link input {
+            flex: 1;
+            padding: 8px;
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: white;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #4752c4;
+        }
+
+        .btn-success {
+            background: #57f287;
+        }
+
+        .btn-success:hover {
+            background: #45d87a;
+        }
+
+        .btn-danger {
+            background: #ed4245;
+        }
+
+        .btn-danger:hover {
+            background: #db3a3d;
+        }
+
+        .call-interface {
+            flex: 2;
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 400px;
+        }
+
+        .call-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
+        }
+
+        .video-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+            min-height: 300px;
+        }
+
+        .video-participant {
+            background: #363636;
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+            aspect-ratio: 16/9;
+        }
+
+        .video-participant video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .participant-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px;
+            font-size: 0.9em;
+        }
+
+        .call-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+
+        .mute-btn {
+            background: #444;
+            color: white;
+        }
+
+        .mute-btn.muted {
+            background: #ed4245;
+        }
+
+        .video-btn {
+            background: #444;
+            color: white;
+        }
+
+        .video-btn.off {
+            background: #ed4245;
+        }
+
+        .end-call-btn {
+            background: #ed4245;
+            color: white;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .status-online {
+            background: #57f287;
+        }
+
+        .status-connecting {
+            background: #faa81a;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #57f287;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        .toast.error {
+            background: #ed4245;
+        }
+
+        .back-btn {
+            background: #444;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .action-selector {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .video-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Anomcord</h1>
+            <p>P2P видеозвонки</p>
+        </div>
+
+        <div class="action-selector" id="actionSelector">
+            <div class="action-card" onclick="selectAction('create')">
+                <div class="action-title">Создать звонок</div>
+                <p>Создайте новую комнату</p>
+            </div>
+            <div class="action-card" onclick="selectAction('join')">
+                <div class="action-title">Присоединиться</div>
+                <p>Присоединитесь по ID комнаты</p>
+            </div>
+        </div>
+
+        <div class="main-content" id="mainContent">
+            <div class="room-info">
+                <button class="btn back-btn" onclick="goBackToSelection()">← Назад</button>
+                
+                <div id="createSection">
+                    <div class="room-id-section">
+                        <h3>ID комнаты</h3>
+                        <div class="room-id" id="roomId">A9B3C2</div>
+                        <p>Поделитесь этим ID для подключения</p>
+                    </div>
+
+                    <div class="share-section">
+                        <h3>Ссылка для приглашения</h3>
+                        <div class="share-link">
+                            <input type="text" id="shareLink" readonly>
+                            <button class="btn" onclick="copyShareLink()">Копировать</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="joinSection" style="display: none;">
+                    <div class="join-section">
+                        <h3>Присоединиться к звонку</h3>
+                        <p>Введите ID комнаты (6 символов)</p>
+                        <input type="text" class="join-input" id="joinInput" placeholder="A1B2C3" maxlength="6">
+                        <button class="btn btn-success" onclick="joinRoom()" style="width: 100%;">
+                            Присоединиться
+                        </button>
+                    </div>
+                </div>
+
+                <div class="participants-list">
+                    <h3>Участники</h3>
+                    <div id="participantsList">
+                        <div>Ожидание начала звонка...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="call-interface">
+                <div class="call-header">
+                    <div class="call-title">
+                        <span class="status-indicator status-connecting"></span>
+                        <span id="callStatus">Выберите действие</span>
+                    </div>
+                    <div>Участников: <span id="participantCount">0</span></div>
+                </div>
+
+                <div class="video-container" id="videoContainer">
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+                        Начните звонок, чтобы увидеть видео
+                    </div>
+                </div>
+
+                <div class="call-controls">
+                    <button class="control-btn mute-btn" id="muteBtn" onclick="toggleMute()" disabled>🎤</button>
+                    <button class="control-btn video-btn" id="videoBtn" onclick="toggleVideo()" disabled>📹</button>
+                    <button class="control-btn end-call-btn" id="startCallBtn" onclick="toggleCall()">📞 Начать</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; color: #888; margin-top: 40px;">
+            <p>Anomcord &copy; 2023 - P2P видеозвонки</p>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Сообщение</div>
+
+    <script>
+        // Глобальные переменные
+        let localStream = null;
+        let remoteStream = null;
+        let peerConnection = null;
+        let currentRoomId = null;
+        let isMuted = false;
+        let isVideoOff = false;
+        let currentAction = null;
+        let callActive = false;
+        let dataChannel = null;
+
+        // Конфигурация STUN серверов
+        const pcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('room');
+            
+            if (roomId && roomId.length === 6 && /^[A-Z0-9]{6}$/.test(roomId)) {
+                document.getElementById('joinInput').value = roomId;
+                selectAction('join');
+            }
+        });
+
+        // Выбор действия
+        function selectAction(action) {
+            currentAction = action;
+            
+            document.querySelectorAll('.action-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            document.getElementById('mainContent').classList.add('active');
+            
+            if (action === 'create') {
+                setupCreateCall();
+            } else if (action === 'join') {
+                setupJoinCall();
+            }
+        }
+
+        // Настройка создания звонка
+        function setupCreateCall() {
+            document.getElementById('createSection').style.display = 'block';
+            document.getElementById('joinSection').style.display = 'none';
+            
+            currentRoomId = generateRoomId();
+            document.getElementById('roomId').textContent = currentRoomId;
+            updateShareLink();
+            updateBrowserUrl();
+            
+            document.getElementById('callStatus').textContent = `Создание комнаты ${currentRoomId}`;
+            document.getElementById('startCallBtn').textContent = '📞 Начать звонок';
+        }
+
+        // Настройка присоединения
+        function setupJoinCall() {
+            document.getElementById('createSection').style.display = 'none';
+            document.getElementById('joinSection').style.display = 'block';
+            
+            document.getElementById('callStatus').textContent = 'Присоединение к звонку';
+            document.getElementById('startCallBtn').textContent = '📞 Присоединиться';
+        }
+
+        // Назад к выбору действия
+        function goBackToSelection() {
+            document.getElementById('mainContent').classList.remove('active');
+            document.querySelectorAll('.action-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            endCall();
+            currentAction = null;
+        }
+
+        // Присоединение к комнате
+        function joinRoom() {
+            const joinInput = document.getElementById('joinInput');
+            const roomId = joinInput.value.toUpperCase().trim();
+            
+            if (roomId.length !== 6 || !/^[A-Z0-9]{6}$/.test(roomId)) {
+                showToast('Введите корректный 6-символьный ID', true);
+                return;
+            }
+            
+            currentRoomId = roomId;
+            updateBrowserUrl();
+            showToast(`Присоединение к комнате ${roomId}`);
+            document.getElementById('callStatus').textContent = `Присоединение к ${roomId}`;
+        }
+
+        // Генерация ID комнаты
+        function generateRoomId() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        // Обновление ссылки для шаринга
+        function updateShareLink() {
+            const shareLink = `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
+            document.getElementById('shareLink').value = shareLink;
+        }
+
+        // Обновление URL в браузере
+        function updateBrowserUrl() {
+            const newUrl = `${window.location.pathname}?room=${currentRoomId}`;
+            window.history.replaceState({}, '', newUrl);
+        }
+
+        // Копирование ссылки
+        function copyShareLink() {
+            const shareLink = document.getElementById('shareLink');
+            shareLink.select();
+            shareLink.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(shareLink.value)
+                .then(() => {
+                    showToast('Ссылка скопирована');
+                })
+                .catch(err => {
+                    showToast('Ошибка копирования', true);
+                });
+        }
+
+        // Показ уведомления
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast';
+            
+            if (isError) {
+                toast.classList.add('error');
+            }
+            
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Переключение состояния звонка
+        function toggleCall() {
+            if (callActive) {
+                endCall();
+            } else {
+                startCall();
+            }
+        }
+
+        // Начало звонка
+        async function startCall() {
+            if (!currentRoomId) {
+                showToast('Сначала создайте комнату или присоединитесь', true);
+                return;
+            }
+
+            try {
+                // Получаем доступ к камере и микрофону
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: true
+                });
+
+                // Создаем PeerConnection
+                createPeerConnection();
+
+                // Добавляем локальный поток
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                // Отображаем локальное видео
+                displayLocalVideo();
+
+                if (currentAction === 'create') {
+                    // Создаем офер
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    
+                    // В реальном приложении здесь был бы обмен SDP через сервер
+                    // Для демо просто показываем сообщение
+                    showToast('Звонок начат. Ожидание подключения...');
+                } else {
+                    // Для присоединяющегося - здесь был бы запрос офера у создателя
+                    showToast('Подключение к звонку...');
+                }
+
+                callActive = true;
+                document.getElementById('startCallBtn').textContent = '📞 Завершить';
+                document.getElementById('muteBtn').disabled = false;
+                document.getElementById('videoBtn').disabled = false;
+                document.getElementById('callStatus').innerHTML = 
+                    `<span class="status-indicator status-online"></span> Звонок активен - ${currentRoomId}`;
+
+                updateParticipantCount();
+
+            } catch (error) {
+                console.error('Ошибка начала звонка:', error);
+                if (error.name === 'NotAllowedError') {
+                    showToast('Доступ к камере/микрофону запрещен', true);
+                } else {
+                    showToast('Ошибка доступа к устройствам', true);
+                }
+            }
+        }
+
+        // Создание PeerConnection
+        function createPeerConnection() {
+            peerConnection = new RTCPeerConnection(pcConfig);
+
+            // Обработка удаленного потока
+            peerConnection.ontrack = (event) => {
+                remoteStream = event.streams[0];
+                displayRemoteVideo();
+                updateParticipantCount();
+                showToast('Участник подключился');
+            };
+
+            // Обработка ICE кандидатов
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    // В реальном приложении здесь была бы отправка кандидата через сервер
+                    console.log('New ICE candidate:', event.candidate);
+                }
+            };
+
+            // Обработка изменения состояния соединения
+            peerConnection.onconnectionstatechange = () => {
+                console.log('Connection state:', peerConnection.connectionState);
+                if (peerConnection.connectionState === 'connected') {
+                    showToast('Соединение установлено');
+                }
+            };
+        }
+
+        // Отображение локального видео
+        function displayLocalVideo() {
+            const videoContainer = document.getElementById('videoContainer');
+            videoContainer.innerHTML = '';
+            
+            const localVideo = document.createElement('video');
+            localVideo.srcObject = localStream;
+            localVideo.autoplay = true;
+            localVideo.muted = true;
+            localVideo.playsInline = true;
+            
+            const localDiv = document.createElement('div');
+            localDiv.className = 'video-participant';
+            localDiv.appendChild(localVideo);
+            
+            const localInfo = document.createElement('div');
+            localInfo.className = 'participant-info';
+            localInfo.textContent = 'Вы';
+            localDiv.appendChild(localInfo);
+            
+            videoContainer.appendChild(localDiv);
+        }
+
+        // Отображение удаленного видео
+        function displayRemoteVideo() {
+            const videoContainer = document.getElementById('videoContainer');
+            
+            const remoteVideo = document.createElement('video');
+            remoteVideo.srcObject = remoteStream;
+            remoteVideo.autoplay = true;
+            remoteVideo.playsInline = true;
+            
+            const remoteDiv = document.createElement('div');
+            remoteDiv.className = 'video-participant';
+            remoteDiv.appendChild(remoteVideo);
+            
+            const remoteInfo = document.createElement('div');
+            remoteInfo.className = 'participant-info';
+            remoteInfo.textContent = 'Участник';
+            remoteDiv.appendChild(remoteInfo);
+            
+            videoContainer.appendChild(remoteDiv);
+        }
+
+        // Переключение микрофона
+        function toggleMute() {
+            if (!localStream) return;
+
+            isMuted = !isMuted;
+            const audioTracks = localStream.getAudioTracks();
+            audioTracks.forEach(track => {
+                track.enabled = !isMuted;
+            });
+            
+            const muteBtn = document.getElementById('muteBtn');
+            if (isMuted) {
+                muteBtn.classList.add('muted');
+                showToast('Микрофон выключен');
+            } else {
+                muteBtn.classList.remove('muted');
+                showToast('Микрофон включен');
+            }
+        }
+
+        // Переключение видео
+        function toggleVideo() {
+            if (!localStream) return;
+
+            isVideoOff = !isVideoOff;
+            const videoTracks = localStream.getVideoTracks();
+            videoTracks.forEach(track => {
+                track.enabled = !isVideoOff;
+            });
+            
+            const videoBtn = document.getElementById('videoBtn');
+            if (isVideoOff) {
+                videoBtn.classList.add('off');
+                showToast('Камера выключена');
+            } else {
+                videoBtn.classList.remove('off');
+                showToast('Камера включена');
+            }
+        }
+
+        // Обновление счетчика участников
+        function updateParticipantCount() {
+            let count = 1; // Локальный участник всегда есть
+            if (remoteStream) count++;
+            
+            document.getElementById('participantCount').textContent = count;
+            
+            // Обновление списка участников
+            const list = document.getElementById('participantsList');
+            list.innerHTML = `
+                <div>Вы - подключен</div>
+                ${remoteStream ? '<div>Участник - подключен</div>' : '<div>Ожидание участника...</div>'}
+            `;
+        }
+
+        // Завершение звонка
+        function endCall() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            remoteStream = null;
+
+            // Очистка интерфейса
+            const videoContainer = document.getElementById('videoContainer');
+            videoContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px;">Начните звонок, чтобы увидеть видео</div>';
+            
+            document.getElementById('startCallBtn').textContent = '📞 Начать';
+            document.getElementById('muteBtn').disabled = true;
+            document.getElementById('videoBtn').disabled = true;
+            document.getElementById('muteBtn').classList.remove('muted');
+            document.getElementById('videoBtn').classList.remove('off');
+            document.getElementById('callStatus').innerHTML = 
+                `<span class="status-indicator status-connecting"></span> Звонок завершен`;
+            
+            updateParticipantCount();
+            showToast('Звонок завершен');
+            
+            isMuted = false;
+            isVideoOff = false;
+            callActive = false;
+        }
+
+        // Обработка ввода ID комнаты
+        document.getElementById('joinInput').addEventListener('input', function(e) {
+            this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+    </script>
+</body>
+</html>
